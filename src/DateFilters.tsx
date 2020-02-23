@@ -2,19 +2,31 @@ import {
   MuiPickersUtilsProvider,
   KeyboardDatePicker
 } from '@material-ui/pickers';
-import React, { useState } from 'react';
+import React, { useState, FunctionComponent } from 'react';
 import DateFnsUtils from '@date-io/date-fns';
 
-const Filter = () => {
-  const [selectedStartDate, setSelectedStartDate] = useState(new Date());
-  const [selectedEndDate, setSelectedEndDate] = useState(new Date());
+export interface DateFiltersProps {
+  dateFilterChanged: (dates: { from: Date; to: Date }) => void;
+  defaultFromDate: Date;
+  defaultToDate: Date;
+}
+
+export const DateFilters: FunctionComponent<DateFiltersProps> = (
+  props: DateFiltersProps
+) => {
+  const [selectedStartDate, setSelectedStartDate] = useState(
+    props.defaultFromDate
+  );
+  const [selectedEndDate, setSelectedEndDate] = useState(props.defaultToDate);
 
   const handleStartDateChange = (date: Date | null) => {
     setSelectedStartDate(date);
+    props.dateFilterChanged({ from: date, to: selectedEndDate });
   };
 
   const handleEndDateChange = (date: Date | null) => {
     setSelectedEndDate(date);
+    props.dateFilterChanged({ from: selectedStartDate, to: date });
   };
   return (
     <React.Fragment>
@@ -46,8 +58,6 @@ const Filter = () => {
           }}
         />
       </MuiPickersUtilsProvider>
-      <p>{String(selectedStartDate)}</p>
-      <p>{String(selectedEndDate)}</p>
     </React.Fragment>
   );
 };
