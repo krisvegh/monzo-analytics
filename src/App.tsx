@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ResponsiveBar } from '@nivo/bar';
 import DateFnsUtils from '@date-io/date-fns';
-import { map, split, groupBy, uniq } from 'ramda';
+import { split, groupBy, uniq, zipObj } from 'ramda';
 import FormGroup from '@material-ui/core/FormGroup';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import Checkbox, { CheckboxProps } from '@material-ui/core/Checkbox';
@@ -9,24 +9,55 @@ import { xor } from 'lodash';
 import { DateFilters } from './DateFilters';
 
 import './App.css';
+import DetailsTable from './DetailsTable';
 
 interface Record {
   id: string;
-  created: string;
+  date: string;
+  time: string;
+  type: string;
+  name: string;
+  emoji: string;
+  category: string;
   amount: string;
   currency: string;
-  local_amount: string;
-  local_currency: string;
-  category: string;
-  emoji: string;
-  description: string;
-  address: string;
+  localAmount: string;
+  localCurrency: string;
   notes: string;
+  address: string;
+  receipt: string;
+  description: string;
+  categorySplit: string;
 }
 
 interface DisplayableRecord {
   [category: string]: number | string;
 }
+
+interface NodeData {
+  id: string | number;
+  value: number;
+  index: number;
+  indexValue: string | number;
+  color: string;
+  data: object;
+}
+
+const colorList = [
+  '#a6cee3',
+  '#1f78b4',
+  '#b2df8a',
+  '#33a02c',
+  '#fb9a99',
+  '#e31a1c',
+  '#fdbf6f',
+  '#ff7f00',
+  '#cab2d6',
+  '#29dac2',
+  '#b83ff7',
+  '#80f318',
+  '#f018f3'
+];
 
 const App = () => {
   const [allRecords, setAllRecords] = useState([]);
@@ -39,6 +70,12 @@ const App = () => {
     from: new Date(),
     to: new Date()
   });
+  const [colorsByCategory, setColorsByCategory] = useState({});
+  const [detailsTableData, setDetailsTableData] = useState([]);
+
+  function getColors(record: Record) {
+    return (colorsByCategory as any)[record.id] || 'pink';
+  }
 
   const handlefilter = (name: string) => (
     event: React.ChangeEvent<HTMLInputElement>
@@ -53,13 +90,15 @@ const App = () => {
       const records = getRecordsFromCSV(reader.result as string);
       setAllRecords(records);
       const allCategories = getCategories(records);
-      showRecords(records, { from: new Date(0), to: new Date() });
+      setColorsByCategory(zipObj(allCategories, colorList));
       setAllCategories(allCategories);
       setFilteredCategories(allCategories);
+      showRecords(records, { from: new Date(0), to: new Date() });
     };
   }
 
   function showRecords(records: Record[], dates: { from: Date; to: Date }) {
+    console.log(records);
     const filteredRecords = filterByDate(records, dates);
     const recordsToShow = mapRecordsToDisplay(filteredRecords);
     setRecords(recordsToShow);
@@ -69,15 +108,19 @@ const App = () => {
     const date = new DateFnsUtils();
     return groupBy<Record>(
       record =>
-        `${date.getMonth(date.date(record.created)) + 1}/${date.getYear(
-          date.date(record.created)
+        `${date.getMonth(date.date(record.date)) + 1}/${date.getYear(
+          date.date(record.date)
         )}`,
       records
     );
   }
 
   function getCategories(records: Record[]): string[] {
-    return uniq(records.map(record => record.category));
+    return [
+      ...uniq(records.map(record => record.category).filter(Boolean)),
+      'unknown',
+      'pot transfer'
+    ];
   }
 
   function getRecordsFromCSV(csv: string): Record[] {
@@ -87,28 +130,38 @@ const App = () => {
       .map(
         ([
           id,
-          created,
+          date,
+          time,
+          type,
+          name,
+          emoji,
+          category,
           amount,
           currency,
-          local_amount,
-          local_currency,
-          category,
-          emoji,
-          description,
+          localAmount,
+          localCurrency,
+          notes,
           address,
-          notes
+          receipt,
+          description,
+          categorySplit
         ]) => ({
           id,
-          created,
+          date,
+          time,
+          type,
+          name,
+          emoji,
+          category,
           amount,
           currency,
-          local_amount,
-          local_currency,
-          category,
-          emoji,
-          description,
+          localAmount,
+          localCurrency,
+          notes,
           address,
-          notes
+          receipt,
+          description,
+          categorySplit
         })
       );
     const [header, ...records] = rows;
@@ -117,30 +170,34 @@ const App = () => {
 
   function mapRecordsToDisplay(records: Record[]): DisplayableRecord[] {
     const recordsByMonth = getRecordsByMonth(records);
-    const isIncome = (value: number) => value > 0;
-
+    console.log(recordsByMonth);
+    const calculate = (acc: number, value: string): number => {
+      return Number(((Number(acc) || 0) - Number(value)).toFixed());
+    };
     let recordsToDisplay: DisplayableRecord[] = [];
     for (let i in recordsByMonth) {
       const entries = recordsByMonth[i].reduce((acc, val) => {
-        return {
-          ...acc,
-          ...(Number(val.amount) < 0
-            ? {
-                [val.category]: Number(
-                  (
-                    (Number(acc[val.category]) || 0) - Number(val.amount)
-                  ).toFixed()
-                )
-              }
-            : {
-                income: Number(
-                  ((Number(acc.income) || 0) - Number(val.amount)).toFixed()
-                )
-              })
-        };
+        let accumulated = { ...acc };
+
+        if (Number(val.amount) < 0) {
+          if (val.type.toLowerCase().includes('pot')) {
+            accumulated['pot transfer'] = calculate(
+              Number(acc['pot transfer']),
+              val.amount
+            );
+            return accumulated;
+          }
+          const cat = val.category ? val.category : 'unknown';
+          accumulated[cat] = calculate(Number(acc[val.category]), val.amount);
+          return accumulated;
+        } else {
+          accumulated.income = calculate(Number(acc[val.category]), val.amount);
+          return accumulated;
+        }
       }, {} as { [category: string]: Number });
       recordsToDisplay.push({ ...entries, month: i });
     }
+    console.log(recordsToDisplay);
     return recordsToDisplay;
   }
 
@@ -150,14 +207,17 @@ const App = () => {
   ): Record[] {
     return records.filter(
       record =>
-        new Date(record.created) > dates.from &&
-        new Date(record.created) < dates.to
+        new Date(record.date) > dates.from && new Date(record.date) < dates.to
     );
   }
 
   function dateFilterHandler(dates: { from: Date; to: Date }) {
     const recordsToShow = filterByDate(allRecords, dates);
     showRecords(recordsToShow, dates);
+  }
+
+  function clickHandler(nodeData: NodeData) {
+    console.log(nodeData);
   }
 
   return (
@@ -193,8 +253,9 @@ const App = () => {
         <ResponsiveBar
           data={records}
           keys={filteredCategories}
+          onClick={clickHandler}
           indexBy="month"
-          colors={{ scheme: 'paired' }}
+          colors={getColors}
           margin={{ top: 50, right: 130, bottom: 50, left: 60 }}
           padding={0.3}
           axisBottom={{
@@ -241,6 +302,7 @@ const App = () => {
           labelSkipHeight={12}
         />
       </div>
+      <DetailsTable></DetailsTable>
     </React.Fragment>
   );
 };
