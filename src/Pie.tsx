@@ -3,19 +3,19 @@ import { ResponsivePie, PieDatum } from '@nivo/pie';
 
 interface PieProps {
   data: PieDatum[];
+  getColors: any;
 }
 
-const PieChart: React.FC<PieProps> = ({ data }) => {
-  console.log(`Pie: ${data}`);
+const PieChart: React.FC<PieProps> = ({ data, getColors }) => {
   return (
-    <div style={{ width: 800, height: 800 }}>
+    <div style={{ height: '30vw' }}>
       <ResponsivePie
         data={data}
+        colors={getColors}
         margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
         innerRadius={0.5}
         padAngle={0.7}
         cornerRadius={3}
-        colors={{ scheme: 'nivo' }}
         borderWidth={1}
         borderColor={{ from: 'color', modifiers: [['darker', 0.2]] }}
         radialLabelsSkipAngle={10}
@@ -31,26 +31,6 @@ const PieChart: React.FC<PieProps> = ({ data }) => {
         animate={true}
         motionStiffness={90}
         motionDamping={15}
-        legends={[
-          {
-            anchor: 'bottom',
-            direction: 'row',
-            translateY: 56,
-            itemWidth: 100,
-            itemHeight: 18,
-            itemTextColor: '#999',
-            symbolSize: 18,
-            symbolShape: 'circle',
-            effects: [
-              {
-                on: 'hover',
-                style: {
-                  itemTextColor: '#000'
-                }
-              }
-            ]
-          }
-        ]}
       />
     </div>
   );

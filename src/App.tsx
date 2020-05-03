@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ResponsiveBar } from '@nivo/bar';
-import DateFnsUtils from '@date-io/date-fns';
 import {
   split,
   groupBy,
@@ -12,17 +11,23 @@ import {
   omit,
   pipe,
   map,
-  keys
+  keys,
+  pick
 } from 'ramda';
 import FormGroup from '@material-ui/core/FormGroup';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
-import Checkbox, { CheckboxProps } from '@material-ui/core/Checkbox';
+import Checkbox from '@material-ui/core/Checkbox';
 import { xor } from 'lodash';
 import { DateFilters } from './DateFilters';
-
 import './App.css';
 import DetailsTable from './DetailsTable';
 import PieChart from './Pie';
+import Card from '@material-ui/core/Card';
+import Grid from '@material-ui/core/Grid';
+import { AppBar, Toolbar, Typography } from '@material-ui/core';
+import CardContent from '@material-ui/core/CardContent';
+import Button from '@material-ui/core/Button';
+import { PieDatum } from '@nivo/pie';
 
 export interface Record {
   id: string;
@@ -83,7 +88,7 @@ const App = () => {
   });
   const [colorsByCategory, setColorsByCategory] = useState<{}>({});
   const [detailsTableData, setDetailsTableData] = useState<Record[]>([]);
-  const [pieData, setPieData] = useState([]);
+  const [pieData, setPieData] = useState<PieDatum[]>([]);
 
   function getColors(record: Record) {
     return (colorsByCategory as any)[record.id] || 'pink';
@@ -92,7 +97,8 @@ const App = () => {
   const handlefilter = (name: string) => (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    setFilteredCategories(xor(filteredCategories, [name]));
+    const filtered = [...xor(filteredCategories, [name])];
+    setFilteredCategories(filtered);
   };
 
   function handleAddFile(file: File) {
@@ -110,7 +116,6 @@ const App = () => {
   }
 
   function showRecords(records: Record[], dates: { from: Date; to: Date }) {
-    console.log(records);
     const filteredRecords = filterByDate(records, dates);
     const recordsToShow = mapRecordsToDisplay(filteredRecords);
     setRecords(recordsToShow);
@@ -179,7 +184,6 @@ const App = () => {
 
   function mapRecordsToDisplay(records: Record[]): DisplayableRecord[] {
     const recordsByMonth = getRecordsByMonth(records);
-    console.log(recordsByMonth);
     const calculate = (acc: number, value: string): number => {
       return Number(((Number(acc) || 0) - Number(value)).toFixed());
     };
@@ -206,7 +210,6 @@ const App = () => {
       }, {} as { [category: string]: Number });
       recordsToDisplay.push({ ...entries, month: i });
     }
-    console.log(recordsToDisplay);
     return recordsToDisplay;
   }
 
@@ -222,17 +225,18 @@ const App = () => {
   }
 
   const updatePie = useCallback(() => {
+    console.log('updatepie');
     const accumulate = reduce(mergeWith(add), {});
     const removeUnused = omit(['month', 'income']);
-    const combine = pipe(accumulate, removeUnused);
+    const pickOnlySelectedCategories = pick(filteredCategories);
+    const combine = pipe(accumulate, pickOnlySelectedCategories, removeUnused);
     const combined = combine(records);
     const result = map(
       key => ({ label: key, id: key, value: combined[key] }),
       keys(combined)
     );
-    console.log(result);
     setPieData(result);
-  }, [records]);
+  }, [records, filteredCategories]);
 
   useEffect(() => {
     updatePie();
@@ -245,7 +249,6 @@ const App = () => {
   }
 
   function clickHandler(nodeData: NodeData) {
-    updatePie();
     const filteredByMonth = allRecords.filter(record =>
       record.date.includes(nodeData.indexValue as string)
     );
@@ -259,91 +262,174 @@ const App = () => {
     setDetailsTableData(filteredByCat);
   }
 
+  const getTotalExpenses = useMemo(() => {
+    const total = pieData.reduce((acc, val) => acc + Number(val.value), 0);
+    return total;
+  }, [pieData]);
+
   return (
-    <React.Fragment>
-      <header>Here comes the header leater</header>
-      <DateFilters
-        dateFilterChanged={dateFilterHandler}
-        defaultFromDate={new Date()}
-        defaultToDate={new Date()}
-      ></DateFilters>
-      <div className="App">
-        <input
-          type="file"
-          onChange={e => handleAddFile(e.target.files?.item(0))}
-        />
-      </div>
-      <FormGroup row>
-        {allCategories.map(cat => (
-          <FormControlLabel
-            key={cat}
-            control={
-              <Checkbox
-                checked={filteredCategories.includes(cat)}
-                onChange={handlefilter(cat)}
-                value={cat}
-              />
-            }
-            label={cat}
-          />
-        ))}
-      </FormGroup>
-      <div className="chart-wrapper">
-        <ResponsiveBar
-          data={records}
-          keys={filteredCategories}
-          onClick={clickHandler}
-          indexBy="month"
-          colors={getColors}
-          margin={{ top: 50, right: 130, bottom: 50, left: 60 }}
-          padding={0.3}
-          axisBottom={{
-            tickSize: 5,
-            tickPadding: 5,
-            tickRotation: 0,
-            legend: 'month',
-            legendPosition: 'middle',
-            legendOffset: 32
-          }}
-          axisLeft={{
-            tickSize: 5,
-            tickPadding: 5,
-            tickRotation: 0,
-            legend: 'spent',
-            legendPosition: 'middle',
-            legendOffset: -40
-          }}
-          legends={[
-            {
-              dataFrom: 'keys',
-              anchor: 'bottom-right',
-              direction: 'column',
-              justify: false,
-              translateX: 120,
-              translateY: 0,
-              itemsSpacing: 2,
-              itemWidth: 100,
-              itemHeight: 20,
-              itemDirection: 'left-to-right',
-              itemOpacity: 0.85,
-              symbolSize: 20,
-              effects: [
-                {
-                  on: 'hover',
-                  style: {
-                    itemOpacity: 1
-                  }
-                }
-              ]
-            }
-          ]}
-          labelSkipWidth={12}
-          labelSkipHeight={12}
-        />
-      </div>
-      <DetailsTable rows={detailsTableData}></DetailsTable>
-      <PieChart data={pieData}></PieChart>
-    </React.Fragment>
+    <div>
+      <React.Fragment>
+        <AppBar position="fixed">
+          <Toolbar>
+            <Typography variant="h6">MONZO Analytics</Typography>
+          </Toolbar>
+        </AppBar>
+        <Toolbar />
+      </React.Fragment>
+      <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <div className="file-import-button">
+            <input
+              type="file"
+              onChange={e => handleAddFile(e.target.files?.item(0))}
+            />
+          </div>
+        </Grid>
+        <Grid item xs={4} className="card">
+          <Card>
+            <CardContent>
+              <Typography variant="h5" color="textSecondary" gutterBottom>
+                Filter by date
+              </Typography>
+              <DateFilters
+                dateFilterChanged={dateFilterHandler}
+                defaultFromDate={new Date()}
+                defaultToDate={new Date()}
+              ></DateFilters>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={8}>
+          <Card className="card">
+            <CardContent>
+              <Typography variant="h5" color="textSecondary">
+                Filter by category
+              </Typography>
+              <FormGroup row>
+                <Button
+                  className="category-button"
+                  size="small"
+                  color="primary"
+                  onClick={() => setFilteredCategories(allCategories)}
+                >
+                  Select All
+                </Button>
+                <Button
+                  className="category-button"
+                  size="small"
+                  color="primary"
+                  onClick={() => setFilteredCategories([])}
+                >
+                  Deselect All
+                </Button>
+                {allCategories.map(cat => (
+                  <FormControlLabel
+                    key={cat}
+                    control={
+                      <Checkbox
+                        checked={filteredCategories.includes(cat)}
+                        onChange={handlefilter(cat)}
+                        value={cat}
+                      />
+                    }
+                    label={cat}
+                  />
+                ))}
+              </FormGroup>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={9}>
+          <Card className="card bars">
+            <CardContent>
+              <Typography variant="h5" color="textSecondary">
+                Summary by month
+              </Typography>
+              <div className="bars-container">
+                <ResponsiveBar
+                  data={records}
+                  keys={filteredCategories}
+                  onClick={clickHandler}
+                  indexBy="month"
+                  colors={getColors}
+                  margin={{ top: 50, right: 130, bottom: 50, left: 60 }}
+                  padding={0.3}
+                  axisBottom={{
+                    tickSize: 5,
+                    tickPadding: 5,
+                    tickRotation: 0,
+                    legend: 'month',
+                    legendPosition: 'middle',
+                    legendOffset: 32
+                  }}
+                  axisLeft={{
+                    tickSize: 5,
+                    tickPadding: 5,
+                    tickRotation: 0,
+                    legend: 'spent',
+                    legendPosition: 'middle',
+                    legendOffset: -40
+                  }}
+                  legends={[
+                    {
+                      dataFrom: 'keys',
+                      anchor: 'bottom-right',
+                      direction: 'column',
+                      justify: false,
+                      translateX: 120,
+                      translateY: 0,
+                      itemsSpacing: 2,
+                      itemWidth: 100,
+                      itemHeight: 20,
+                      itemDirection: 'left-to-right',
+                      itemOpacity: 0.85,
+                      symbolSize: 20,
+                      effects: [
+                        {
+                          on: 'hover',
+                          style: {
+                            itemOpacity: 1
+                          }
+                        }
+                      ]
+                    }
+                  ]}
+                  labelSkipWidth={12}
+                  labelSkipHeight={12}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={3}>
+          <Card className="card">
+            <CardContent className="pie-content">
+              <Typography variant="h5" color="textSecondary">
+                Overall Summary
+              </Typography>
+              <PieChart data={pieData} getColors={getColors}></PieChart>
+              <Typography variant="body1" color="textSecondary">
+                Total expenses: £ {getTotalExpenses}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+      <Grid item xs={9}>
+        <Card className="card details">
+          <CardContent>
+            <Typography variant="h5" color="textSecondary">
+              Details
+            </Typography>
+            <Typography variant="subtitle1" color="textSecondary">
+              Click on a bar to display details
+            </Typography>
+            <DetailsTable rows={detailsTableData}></DetailsTable>
+          </CardContent>
+        </Card>
+      </Grid>
+    </div>
   );
 };
 
