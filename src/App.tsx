@@ -1,7 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ResponsiveBar } from '@nivo/bar';
 import DateFnsUtils from '@date-io/date-fns';
-import { split, groupBy, uniq, zipObj } from 'ramda';
+import {
+  split,
+  groupBy,
+  uniq,
+  zipObj,
+  reduce,
+  mergeWith,
+  add,
+  omit,
+  pipe,
+  map,
+  keys
+} from 'ramda';
 import FormGroup from '@material-ui/core/FormGroup';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import Checkbox, { CheckboxProps } from '@material-ui/core/Checkbox';
@@ -10,8 +22,9 @@ import { DateFilters } from './DateFilters';
 
 import './App.css';
 import DetailsTable from './DetailsTable';
+import PieChart from './Pie';
 
-interface Record {
+export interface Record {
   id: string;
   date: string;
   time: string;
@@ -60,18 +73,17 @@ const colorList = [
 ];
 
 const App = () => {
-  const [allRecords, setAllRecords] = useState([]);
-  const [records, setRecords] = useState<
-    { [category: string]: number | string }[]
-  >([]);
-  const [filteredCategories, setFilteredCategories] = useState([]);
-  const [allCategories, setAllCategories] = useState([]);
+  const [allRecords, setAllRecords] = useState<Record[]>([]);
+  const [records, setRecords] = useState<DisplayableRecord[]>([]);
+  const [filteredCategories, setFilteredCategories] = useState<string[]>([]);
+  const [allCategories, setAllCategories] = useState<string[]>([]);
   const [dateFilters, setDateFilters] = useState({
     from: new Date(),
     to: new Date()
   });
-  const [colorsByCategory, setColorsByCategory] = useState({});
-  const [detailsTableData, setDetailsTableData] = useState([]);
+  const [colorsByCategory, setColorsByCategory] = useState<{}>({});
+  const [detailsTableData, setDetailsTableData] = useState<Record[]>([]);
+  const [pieData, setPieData] = useState([]);
 
   function getColors(record: Record) {
     return (colorsByCategory as any)[record.id] || 'pink';
@@ -105,14 +117,10 @@ const App = () => {
   }
 
   function getRecordsByMonth(records: Record[]): { [month: string]: Record[] } {
-    const date = new DateFnsUtils();
-    return groupBy<Record>(
-      record =>
-        `${date.getMonth(date.date(record.date)) + 1}/${date.getYear(
-          date.date(record.date)
-        )}`,
-      records
-    );
+    return groupBy<Record>(record => {
+      const [day, month, year] = record.date.split('/');
+      return `${month}/${year}`;
+    }, records);
   }
 
   function getCategories(records: Record[]): string[] {
@@ -165,7 +173,8 @@ const App = () => {
         })
       );
     const [header, ...records] = rows;
-    return records;
+    const filtered = records.filter(record => record.id);
+    return filtered;
   }
 
   function mapRecordsToDisplay(records: Record[]): DisplayableRecord[] {
@@ -179,14 +188,14 @@ const App = () => {
       const entries = recordsByMonth[i].reduce((acc, val) => {
         let accumulated = { ...acc };
 
+        if (val.type.toLowerCase().includes('pot')) {
+          accumulated['pot transfer'] = calculate(
+            Number(acc['pot transfer']),
+            val.amount
+          );
+          return accumulated;
+        }
         if (Number(val.amount) < 0) {
-          if (val.type.toLowerCase().includes('pot')) {
-            accumulated['pot transfer'] = calculate(
-              Number(acc['pot transfer']),
-              val.amount
-            );
-            return accumulated;
-          }
           const cat = val.category ? val.category : 'unknown';
           accumulated[cat] = calculate(Number(acc[val.category]), val.amount);
           return accumulated;
@@ -205,19 +214,49 @@ const App = () => {
     records: Record[],
     dates: { from: Date; to: Date }
   ): Record[] {
-    return records.filter(
-      record =>
-        new Date(record.date) > dates.from && new Date(record.date) < dates.to
-    );
+    return records.filter(record => {
+      const [day, month, year] = record.date.split('/');
+      const recordDate = new Date(Number(year), Number(month) - 1, Number(day));
+      return recordDate > dates.from && recordDate < dates.to;
+    });
   }
+
+  const updatePie = useCallback(() => {
+    const accumulate = reduce(mergeWith(add), {});
+    const removeUnused = omit(['month', 'income']);
+    const combine = pipe(accumulate, removeUnused);
+    const combined = combine(records);
+    const result = map(
+      key => ({ label: key, id: key, value: combined[key] }),
+      keys(combined)
+    );
+    console.log(result);
+    setPieData(result);
+  }, [records]);
+
+  useEffect(() => {
+    updatePie();
+  }, [records, updatePie]);
 
   function dateFilterHandler(dates: { from: Date; to: Date }) {
     const recordsToShow = filterByDate(allRecords, dates);
+    setDateFilters(dates);
     showRecords(recordsToShow, dates);
   }
 
   function clickHandler(nodeData: NodeData) {
-    console.log(nodeData);
+    updatePie();
+    const filteredByMonth = allRecords.filter(record =>
+      record.date.includes(nodeData.indexValue as string)
+    );
+    const filteredByCat = filteredByMonth.filter(
+      record =>
+        record.category === nodeData.id ||
+        (nodeData.id === 'unknown' &&
+          !record.category &&
+          !record.type.toLowerCase().includes('pot'))
+    );
+    setDetailsTableData(filteredByCat);
   }
 
   return (
@@ -302,7 +341,8 @@ const App = () => {
           labelSkipHeight={12}
         />
       </div>
-      <DetailsTable></DetailsTable>
+      <DetailsTable rows={detailsTableData}></DetailsTable>
+      <PieChart data={pieData}></PieChart>
     </React.Fragment>
   );
 };

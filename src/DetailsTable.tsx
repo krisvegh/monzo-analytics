@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   TableContainer,
   Paper,
@@ -8,10 +8,9 @@ import {
   TableCell,
   TableBody
 } from '@material-ui/core';
+import { Record } from './App';
 
-interface DetailsTableProps {}
-
-const DetailsTable = ({ rows = [] }) => {
+const DetailsTable: React.FC<{ rows: Record[] }> = ({ rows = [] }) => {
   return (
     <TableContainer component={Paper}>
       <Table size="small" aria-label="a dense table">
@@ -19,6 +18,7 @@ const DetailsTable = ({ rows = [] }) => {
           <TableRow>
             <TableCell align="right">Date</TableCell>
             <TableCell align="right">Time</TableCell>
+            <TableCell align="right">Category</TableCell>
             <TableCell align="right">Type</TableCell>
             <TableCell align="right">Name</TableCell>
             <TableCell align="right">Amount</TableCell>
@@ -28,14 +28,17 @@ const DetailsTable = ({ rows = [] }) => {
         </TableHead>
         <TableBody>
           {rows.map(row => (
-            <TableRow key={row.name}>
+            <TableRow key={row.id}>
               <TableCell component="th" scope="row">
-                {row.name}
+                {row.date}
               </TableCell>
-              <TableCell align="right">{row.calories}</TableCell>
-              <TableCell align="right">{row.fat}</TableCell>
-              <TableCell align="right">{row.carbs}</TableCell>
-              <TableCell align="right">{row.protein}</TableCell>
+              <TableCell align="right">{row.time}</TableCell>
+              <TableCell align="right">{row.category}</TableCell>
+              <TableCell align="right">{row.type}</TableCell>
+              <TableCell align="right">{row.name}</TableCell>
+              <TableCell align="right">{row.amount}</TableCell>
+              <TableCell align="right">{row.currency}</TableCell>
+              <TableCell align="right">{row.notes}</TableCell>
             </TableRow>
           ))}
         </TableBody>
