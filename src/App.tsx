@@ -28,6 +28,7 @@ import { AppBar, Toolbar, Typography } from '@material-ui/core';
 import CardContent from '@material-ui/core/CardContent';
 import Button from '@material-ui/core/Button';
 import { PieDatum } from '@nivo/pie';
+import GreetingCard from './Greeting';
 
 export interface Record {
   id: string;
@@ -225,7 +226,6 @@ const App = () => {
   }
 
   const updatePie = useCallback(() => {
-    console.log('updatepie');
     const accumulate = reduce(mergeWith(add), {});
     const removeUnused = omit(['month', 'income']);
     const pickOnlySelectedCategories = pick(filteredCategories);
@@ -267,154 +267,136 @@ const App = () => {
     return total;
   }, [pieData]);
 
-  return (
-    <div>
-      <React.Fragment>
-        <AppBar position="fixed">
-          <Toolbar>
-            <Typography variant="h6">MONZO Analytics</Typography>
-          </Toolbar>
-        </AppBar>
-        <Toolbar />
-      </React.Fragment>
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <div className="file-import-button">
-            <input
-              type="file"
-              onChange={e => handleAddFile(e.target.files?.item(0))}
-            />
-          </div>
-        </Grid>
-        <Grid item xs={4} className="card">
-          <Card>
-            <CardContent>
-              <Typography variant="h5" color="textSecondary" gutterBottom>
-                Filter by date
-              </Typography>
-              <DateFilters
-                dateFilterChanged={dateFilterHandler}
-                defaultFromDate={new Date()}
-                defaultToDate={new Date()}
-              ></DateFilters>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={8}>
-          <Card className="card">
-            <CardContent>
-              <Typography variant="h5" color="textSecondary">
-                Filter by category
-              </Typography>
-              <FormGroup row>
-                <Button
-                  className="category-button"
-                  size="small"
-                  color="primary"
-                  onClick={() => setFilteredCategories(allCategories)}
-                >
-                  Select All
-                </Button>
-                <Button
-                  className="category-button"
-                  size="small"
-                  color="primary"
-                  onClick={() => setFilteredCategories([])}
-                >
-                  Deselect All
-                </Button>
-                {allCategories.map(cat => (
-                  <FormControlLabel
-                    key={cat}
-                    control={
-                      <Checkbox
-                        checked={filteredCategories.includes(cat)}
-                        onChange={handlefilter(cat)}
-                        value={cat}
-                      />
-                    }
-                    label={cat}
-                  />
-                ))}
-              </FormGroup>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={9}>
-          <Card className="card bars">
-            <CardContent>
-              <Typography variant="h5" color="textSecondary">
-                Summary by month
-              </Typography>
-              <div className="bars-container">
-                <ResponsiveBar
-                  data={records}
-                  keys={filteredCategories}
-                  onClick={clickHandler}
-                  indexBy="month"
-                  colors={getColors}
-                  margin={{ top: 50, right: 130, bottom: 50, left: 60 }}
-                  padding={0.3}
-                  axisBottom={{
-                    tickSize: 5,
-                    tickPadding: 5,
-                    tickRotation: 0,
-                    legend: 'month',
-                    legendPosition: 'middle',
-                    legendOffset: 32
-                  }}
-                  axisLeft={{
-                    tickSize: 5,
-                    tickPadding: 5,
-                    tickRotation: 0,
-                    legend: 'spent',
-                    legendPosition: 'middle',
-                    legendOffset: -40
-                  }}
-                  legends={[
-                    {
-                      dataFrom: 'keys',
-                      anchor: 'bottom-right',
-                      direction: 'column',
-                      justify: false,
-                      translateX: 120,
-                      translateY: 0,
-                      itemsSpacing: 2,
-                      itemWidth: 100,
-                      itemHeight: 20,
-                      itemDirection: 'left-to-right',
-                      itemOpacity: 0.85,
-                      symbolSize: 20,
-                      effects: [
-                        {
-                          on: 'hover',
-                          style: {
-                            itemOpacity: 1
-                          }
-                        }
-                      ]
-                    }
-                  ]}
-                  labelSkipWidth={12}
-                  labelSkipHeight={12}
+  const Analytics = () => (
+    <>
+      <Grid item xs={4} className="card">
+        <Card>
+          <CardContent>
+            <Typography variant="h5" color="textSecondary" gutterBottom>
+              Filter by date
+            </Typography>
+            <DateFilters
+              dateFilterChanged={dateFilterHandler}
+              defaultFromDate={new Date()}
+              defaultToDate={new Date()}
+            ></DateFilters>
+          </CardContent>
+        </Card>
+      </Grid>
+      <Grid item xs={8}>
+        <Card className="card">
+          <CardContent>
+            <Typography variant="h5" color="textSecondary">
+              Filter by category
+            </Typography>
+            <FormGroup row>
+              <Button
+                className="category-button"
+                size="small"
+                color="primary"
+                onClick={() => setFilteredCategories(allCategories)}
+              >
+                Select All
+              </Button>
+              <Button
+                className="category-button"
+                size="small"
+                color="primary"
+                onClick={() => setFilteredCategories([])}
+              >
+                Deselect All
+              </Button>
+              {allCategories.map(cat => (
+                <FormControlLabel
+                  key={cat}
+                  control={
+                    <Checkbox
+                      checked={filteredCategories.includes(cat)}
+                      onChange={handlefilter(cat)}
+                      value={cat}
+                    />
+                  }
+                  label={cat}
                 />
-              </div>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={3}>
-          <Card className="card">
-            <CardContent className="pie-content">
-              <Typography variant="h5" color="textSecondary">
-                Overall Summary
-              </Typography>
-              <PieChart data={pieData} getColors={getColors}></PieChart>
-              <Typography variant="body1" color="textSecondary">
-                Total expenses: £ {getTotalExpenses}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+              ))}
+            </FormGroup>
+          </CardContent>
+        </Card>
+      </Grid>
+      <Grid item xs={9}>
+        <Card className="card bars">
+          <CardContent>
+            <Typography variant="h5" color="textSecondary">
+              Summary by month
+            </Typography>
+            <div className="bars-container">
+              <ResponsiveBar
+                data={records}
+                keys={filteredCategories}
+                onClick={clickHandler}
+                indexBy="month"
+                colors={getColors}
+                margin={{ top: 50, right: 130, bottom: 50, left: 60 }}
+                padding={0.3}
+                axisBottom={{
+                  tickSize: 5,
+                  tickPadding: 5,
+                  tickRotation: 0,
+                  legend: 'month',
+                  legendPosition: 'middle',
+                  legendOffset: 32
+                }}
+                axisLeft={{
+                  tickSize: 5,
+                  tickPadding: 5,
+                  tickRotation: 0,
+                  legend: 'spent',
+                  legendPosition: 'middle',
+                  legendOffset: -40
+                }}
+                legends={[
+                  {
+                    dataFrom: 'keys',
+                    anchor: 'bottom-right',
+                    direction: 'column',
+                    justify: false,
+                    translateX: 120,
+                    translateY: 0,
+                    itemsSpacing: 2,
+                    itemWidth: 100,
+                    itemHeight: 20,
+                    itemDirection: 'left-to-right',
+                    itemOpacity: 0.85,
+                    symbolSize: 20,
+                    effects: [
+                      {
+                        on: 'hover',
+                        style: {
+                          itemOpacity: 1
+                        }
+                      }
+                    ]
+                  }
+                ]}
+                labelSkipWidth={12}
+                labelSkipHeight={12}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </Grid>
+      <Grid item xs={3}>
+        <Card className="card">
+          <CardContent className="pie-content">
+            <Typography variant="h5" color="textSecondary">
+              Overall Summary
+            </Typography>
+            <PieChart data={pieData} getColors={getColors}></PieChart>
+            <Typography variant="body1" color="textSecondary">
+              Total expenses: £ {getTotalExpenses}
+            </Typography>
+          </CardContent>
+        </Card>
       </Grid>
       <Grid item xs={9}>
         <Card className="card details">
@@ -428,6 +410,26 @@ const App = () => {
             <DetailsTable rows={detailsTableData}></DetailsTable>
           </CardContent>
         </Card>
+      </Grid>
+    </>
+  );
+
+  return (
+    <div>
+      <React.Fragment>
+        <AppBar position="fixed">
+          <Toolbar>
+            <Typography variant="h6">MONZO Analytics</Typography>
+          </Toolbar>
+        </AppBar>
+        <Toolbar />
+      </React.Fragment>
+      <Grid container spacing={3}>
+        {allRecords.length ? (
+          <Analytics />
+        ) : (
+          <GreetingCard fileInputChanged={handleAddFile} />
+        )}
       </Grid>
     </div>
   );
