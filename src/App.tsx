@@ -12,7 +12,7 @@ import {
   pipe,
   map,
   keys,
-  pick
+  pick,
 } from 'ramda';
 import FormGroup from '@material-ui/core/FormGroup';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
@@ -38,7 +38,7 @@ export interface Record {
   name: string;
   emoji: string;
   category: string;
-  amount: string;
+  amount: any;
   currency: string;
   localAmount: string;
   localCurrency: string;
@@ -75,7 +75,7 @@ const colorList = [
   '#29dac2',
   '#b83ff7',
   '#80f318',
-  '#f018f3'
+  '#f018f3',
 ];
 
 const App = () => {
@@ -85,7 +85,7 @@ const App = () => {
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [dateFilters, setDateFilters] = useState({
     from: new Date(),
-    to: new Date()
+    to: new Date(),
   });
   const [colorsByCategory, setColorsByCategory] = useState<{}>({});
   const [detailsTableData, setDetailsTableData] = useState<Record[]>([]);
@@ -123,7 +123,7 @@ const App = () => {
   }
 
   function getRecordsByMonth(records: Record[]): { [month: string]: Record[] } {
-    return groupBy<Record>(record => {
+    return groupBy<Record>((record) => {
       const [day, month, year] = record.date.split('/');
       return `${month}/${year}`;
     }, records);
@@ -131,9 +131,9 @@ const App = () => {
 
   function getCategories(records: Record[]): string[] {
     return [
-      ...uniq(records.map(record => record.category).filter(Boolean)),
+      ...uniq(records.map((record) => record.category).filter(Boolean)),
       'unknown',
-      'pot transfer'
+      'pot transfer',
     ];
   }
 
@@ -158,7 +158,7 @@ const App = () => {
           address,
           receipt,
           description,
-          categorySplit
+          categorySplit,
         ]) => ({
           id,
           date,
@@ -175,11 +175,11 @@ const App = () => {
           address,
           receipt,
           description,
-          categorySplit
+          categorySplit,
         })
       );
     const [header, ...records] = rows;
-    const filtered = records.filter(record => record.id);
+    const filtered = records.filter((record) => record.id);
     return filtered;
   }
 
@@ -218,7 +218,7 @@ const App = () => {
     records: Record[],
     dates: { from: Date; to: Date }
   ): Record[] {
-    return records.filter(record => {
+    return records.filter((record) => {
       const [day, month, year] = record.date.split('/');
       const recordDate = new Date(Number(year), Number(month) - 1, Number(day));
       return recordDate > dates.from && recordDate < dates.to;
@@ -232,7 +232,7 @@ const App = () => {
     const combine = pipe(accumulate, pickOnlySelectedCategories, removeUnused);
     const combined = combine(records);
     const result = map(
-      key => ({ label: key, id: key, value: combined[key] }),
+      (key) => ({ label: key, id: key, value: combined[key] }),
       keys(combined)
     );
     setPieData(result);
@@ -249,11 +249,11 @@ const App = () => {
   }
 
   function clickHandler(nodeData: NodeData) {
-    const filteredByMonth = allRecords.filter(record =>
+    const filteredByMonth = allRecords.filter((record) =>
       record.date.includes(nodeData.indexValue as string)
     );
     const filteredByCat = filteredByMonth.filter(
-      record =>
+      (record) =>
         record.category === nodeData.id ||
         (nodeData.id === 'unknown' &&
           !record.category &&
@@ -272,12 +272,20 @@ const App = () => {
       <React.Fragment>
         <AppBar position="fixed">
           <Toolbar>
-            <Typography variant="h6">MONZO Analytics</Typography>
+            <Typography className="title" variant="h6">
+              MONZO Analytics
+            </Typography>
+            <a
+              href="https://github.com/krisvegh/monzo-analytics"
+              target="_blank"
+            >
+              <img className="github-icon" src="./github.svg" />
+            </a>
           </Toolbar>
         </AppBar>
         <Toolbar />
       </React.Fragment>
-      <Grid container spacing={3}>
+      <Grid container spacing={3} justify="center">
         {allRecords.length ? (
           <>
             <Grid item xs={4} className="card">
@@ -317,7 +325,7 @@ const App = () => {
                     >
                       Deselect All
                     </Button>
-                    {allCategories.map(cat => (
+                    {allCategories.map((cat) => (
                       <FormControlLabel
                         key={cat}
                         control={
@@ -355,7 +363,7 @@ const App = () => {
                         tickRotation: 0,
                         legend: 'month',
                         legendPosition: 'middle',
-                        legendOffset: 32
+                        legendOffset: 32,
                       }}
                       axisLeft={{
                         tickSize: 5,
@@ -363,7 +371,7 @@ const App = () => {
                         tickRotation: 0,
                         legend: 'spent',
                         legendPosition: 'middle',
-                        legendOffset: -40
+                        legendOffset: -40,
                       }}
                       legends={[
                         {
@@ -383,11 +391,11 @@ const App = () => {
                             {
                               on: 'hover',
                               style: {
-                                itemOpacity: 1
-                              }
-                            }
-                          ]
-                        }
+                                itemOpacity: 1,
+                              },
+                            },
+                          ],
+                        },
                       ]}
                       labelSkipWidth={12}
                       labelSkipHeight={12}

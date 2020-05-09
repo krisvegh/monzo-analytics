@@ -39,3 +39,27 @@ code {
 .bars-container rect {
   cursor: pointer;
 }
+
+.title {
+  flex-grow: 1;
+}
+
+.github-icon {
+  width: 50px;
+}
+
+.video {
+  width: 100%;
+}
+
+.divider {
+  margin: 10px !important;
+}
+
+.info-card {
+  margin-bottom: 20px;
+}
+
+.loadbutton {
+  margin-top: 20px !important;
+}
